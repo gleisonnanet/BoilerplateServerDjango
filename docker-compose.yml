@@ -1,0 +1,62 @@
+version: "2.4"
+services:
+  broker:
+    image: rmohr/activemq:latest
+    ports:
+      - 8161:8161
+      - 61613:61613
+  db:
+    image: postgres:10.1-alpine
+    ports:
+      - 5432:5432
+  app:
+    build:
+      context: .
+      dockerfile: DockerfileTest
+    env_file: .env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - broker
+    ports:
+      - "8000:${PORT}"
+    mem_limit: 256mb
+    command:
+      [
+        "./wait-for-it.sh",
+        "broker:61613",
+        "-t",
+        "120",
+        "--",
+        "./wait-for-it.sh",
+        "db:5432",
+        "-t",
+        "20",
+        "--",
+        "./start.sh",
+      ]
+  integration-tests:
+    build:
+      context: .
+      dockerfile: DockerfileTest
+    env_file: .env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - broker
+    command:
+      [
+        "./wait-for-it.sh",
+        "broker:61613",
+        "-t",
+        "120",
+        "--",
+        "./wait-for-it.sh",
+        "db:5432",
+        "-t",
+        "20",
+        "--",
+        "tox",
+      ]
